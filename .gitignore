@@ -3,3 +3,7 @@ dist/
 .env
 *.log
 .DS_Store
+
+# Pi deploy bundle (keep directory, ignore built assets)
+infra/pi/html/*
+!infra/pi/html/.gitkeep

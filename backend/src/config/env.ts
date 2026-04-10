@@ -20,6 +20,8 @@ export interface AppEnv {
   corsOrigin: string;
   appBaseUrl: string;
   roomTtlMinutes: number;
+  listenHost?: string;
+  trustProxy: boolean;
   livekitUrl?: string;
   livekitApiKey?: string;
   livekitApiSecret?: string;
@@ -44,12 +46,20 @@ export function loadEnv(): AppEnv {
     );
   }
 
+  const trustRaw = optionalString('TRUST_PROXY');
+  const trustProxy =
+    trustRaw === '1' ||
+    trustRaw?.toLowerCase() === 'true' ||
+    trustRaw?.toLowerCase() === 'yes';
+
   return {
     port,
     nodeEnv: optionalString('NODE_ENV') ?? 'development',
     corsOrigin: requireString('CORS_ORIGIN'),
     appBaseUrl: requireString('APP_BASE_URL').replace(/\/$/, ''),
     roomTtlMinutes: roomTtl,
+    listenHost: optionalString('LISTEN_HOST'),
+    trustProxy,
     livekitUrl,
     livekitApiKey,
     livekitApiSecret,

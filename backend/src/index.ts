@@ -23,6 +23,20 @@ setInterval(() => {
   void repo.cleanupExpiredRooms();
 }, CLEANUP_MS);
 
-server.listen(env.port, () => {
-  console.log(`API listening on http://localhost:${env.port}`);
-});
+const listen = () => {
+  const host = env.listenHost?.trim() || undefined;
+  const cb = () => {
+    if (host) {
+      console.log(`API listening on http://${host}:${env.port}`);
+    } else {
+      console.log(`API listening on port ${env.port}`);
+    }
+  };
+  if (host) {
+    server.listen(env.port, host, cb);
+  } else {
+    server.listen(env.port, cb);
+  }
+};
+
+listen();

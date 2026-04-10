@@ -57,6 +57,10 @@ Backend output: `backend/dist`. Frontend output: `frontend/dist`.
 2. Set `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` in `backend/.env` to match `infra/livekit.yaml`.
 3. Create SFU rooms with `POST /api/rooms` and body `{ "mode": "sfu" }`, or set `VITE_DEFAULT_ROOM_MODE=sfu` for the home page (requires a configured server).
 
-## Raspberry Pi 5
+## Raspberry Pi 5 (P2P, Docker + Cloudflare Tunnel)
 
-Use `infra/nginx.conf` as a template for TLS, `/api`, `/socket.io/`, and LiveKit proxying. Use PM2 for the Node process and sync `frontend/dist` to your web root; see `infra/deploy/pi5-deploy.sh` as a starting point.
+Step-by-step guide: **[docs/deploy-pi-p2p.md](docs/deploy-pi-p2p.md)** (uses `infra/pi/docker-compose.p2p.yml`).
+
+Architecture (including `call.*` vs `conf.*` for LiveKit later): **[docs/pi-setup.md](docs/pi-setup.md)**.
+
+Legacy PM2 + host nginx sketch: `infra/nginx.conf`, `infra/deploy/pi5-deploy.sh`.

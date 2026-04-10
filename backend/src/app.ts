@@ -7,6 +7,9 @@ import type { RoomService } from './services/roomService.js';
 
 export function createApp(env: AppEnv, roomService: RoomService): express.Express {
   const app = express();
+  if (env.trustProxy) {
+    app.set('trust proxy', true);
+  }
   app.use(
     cors({
       origin: env.corsOrigin,
