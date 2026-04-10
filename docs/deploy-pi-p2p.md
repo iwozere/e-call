@@ -1,6 +1,6 @@
 # Deploy P2P on Raspberry Pi 5 (Ubuntu) with Docker + Cloudflare Tunnel
 
-**Placeholders:** Examples use **`example.com`** / **`call.example.com`**. Replace with your real domain everywhere (DNS, tunnel, `.env`, `nginx-call.conf`).
+**Placeholders:** Examples use **`example.com`** / **`call.example.com`**. Replace with your real domain (DNS, tunnel, `.env`). Nginx **`server_name`** is derived from **`APP_BASE_URL`** automatically.
 
 This guide deploys **only the 1:1 P2P stack**: React SPA, Express API, and Socket.io on **`https://call.<your-domain>`** (example: `call.example.com`). It uses **`infra/pi/docker-compose.p2p.yml`**.
 
@@ -93,7 +93,13 @@ Set at least:
 
 **Do not** set `LIVEKIT_*` for P2P-only.
 
-Edit **`nginx-call.conf`**: set `server_name` to the **same hostname** as the tunnel (e.g. `call.example.com`). Nginx uses this for correct `Host` handling.
+Nginx reads the same `.env` and sets **`server_name`** from the host in **`APP_BASE_URL`** (optional override: **`CALL_HOST`**). No separate static hostname file.
+
+Before the first **`docker compose up`**, make the nginx hook executable (Git may not preserve the bit):
+
+```bash
+chmod +x nginx/docker-entrypoint.d/05-compute-call-host.sh
+```
 
 ---
 
@@ -137,10 +143,11 @@ docker compose -f docker-compose.p2p.yml logs -f
 **On the Pi** (optional; nginx is bound to loopback **8080**):
 
 ```bash
+# Use the hostname from APP_BASE_URL (example: call.example.com)
 curl -sS -H "Host: call.example.com" http://127.0.0.1:8080/healthz
 ```
 
-Expect: `{"status":"ok"}` (via nginx → backend).
+Expect: `{"status":"ok"}` (via nginx → backend). The **`Host`** header must match **`server_name`**, i.e. the host part of **`APP_BASE_URL`**.
 
 **In a browser:** open `https://call.example.com` (your real hostname). Create a room, open the invite link in a second tab or phone. For P2P, only **two** participants per room.
 
@@ -165,6 +172,7 @@ cd /path/to/e-call
 git pull
 npm install
 cd infra/pi
+chmod +x nginx/docker-entrypoint.d/05-compute-call-host.sh
 ./prepare-frontend.sh
 docker compose -f docker-compose.p2p.yml build
 docker compose -f docker-compose.p2p.yml up -d
@@ -180,6 +188,7 @@ docker compose -f docker-compose.p2p.yml up -d
 | Socket never connects | Tunnel URL must reach **nginx**; nginx must proxy `/socket.io/`; `CORS_ORIGIN` must match the page origin |
 | Wrong invite links | `APP_BASE_URL` in `.env` must match public `https://call...` |
 | SPA blank / 404 on refresh | `html/` missing or outdated; rerun `prepare-frontend.sh`; nginx `try_files` → `/index.html` |
+| nginx exits immediately / `Permission denied` on entrypoint | `chmod +x nginx/docker-entrypoint.d/05-compute-call-host.sh` |
 
 ---
 
@@ -189,7 +198,8 @@ docker compose -f docker-compose.p2p.yml up -d
 |------|------|
 | `backend/Dockerfile` | Multi-stage image; build context = **repo root** |
 | `infra/pi/docker-compose.p2p.yml` | Stack definition |
-| `infra/pi/nginx-call.conf` | Virtual host for `call.*` |
+| `infra/pi/nginx/templates/default.conf.template` | Virtual host; `server_name` from `APP_BASE_URL` |
+| `infra/pi/nginx/docker-entrypoint.d/05-compute-call-host.sh` | Sets `CALL_HOST` before `envsubst` |
 | `infra/pi/.env` | Secrets + URLs (not committed) |
 | `infra/pi/html/` | Built SPA (gitignored except `.gitkeep`) |
 

@@ -5,7 +5,7 @@ Files here deploy **1:1 P2P** (SPA + API + Socket.io) behind **Cloudflare Tunnel
 | File | Purpose |
 |------|---------|
 | `docker-compose.p2p.yml` | `backend` (Node), `nginx` (static + proxy), `cloudflared` |
-| `nginx-call.conf` | `server_name` + `/`, `/api/`, `/socket.io/` |
+| `nginx/templates/default.conf.template` | nginx config; `server_name` from `APP_BASE_URL` via `nginx/docker-entrypoint.d/05-compute-call-host.sh` |
 | `.env.example` | Copy to `.env`; set `TUNNEL_TOKEN`, URLs, etc. |
 | `prepare-frontend.sh` | Builds frontend and fills `./html/` (Linux / macOS / Git Bash) |
 | `prepare-frontend.ps1` | Same on Windows PowerShell |

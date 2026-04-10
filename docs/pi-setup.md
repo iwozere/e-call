@@ -144,8 +144,11 @@ services:
   nginx:
     image: nginx:alpine
     restart: unless-stopped
+    env_file: .env
     volumes:
-      - ./nginx-call.conf:/etc/nginx/conf.d/default.conf:ro
+      # P2P repo: templates/default.conf.template + docker-entrypoint.d (server_name from APP_BASE_URL)
+      - ./nginx/templates/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/docker-entrypoint.d/05-compute-call-host.sh:/docker-entrypoint.d/05-compute-call-host.sh:ro
       - ./frontend-dist:/usr/share/nginx/html:ro
     depends_on: [backend]
     networks: [ecall]
@@ -183,43 +186,13 @@ networks:
 - **Frontend:** build `frontend/` and copy **`dist/*`** into **`frontend-dist/`** for nginx.
 - **Backend:** image runs `node dist/index.js`.
 
-### 5.2 Example nginx for `call.example.com` only
+### 5.2 nginx for `call.*` only
 
-LiveKit is **not** proxied through this nginx in the recommended split; browsers reach **`conf.example.com`** directly via the tunnel.
+LiveKit is **not** proxied through this nginx; browsers reach **`conf.*`** via its own tunnel route.
 
-```nginx
-server {
-    listen 80;
-    server_name call.example.com;
+The **P2P** deployment in this repo uses **`infra/pi/nginx/templates/default.conf.template`**: at container start, a hook sets **`CALL_HOST`** from **`APP_BASE_URL`**, then the official nginx image runs **`envsubst`** (so you do not duplicate the hostname in a second file). See **`infra/pi/nginx/README.md`** and **[deploy-pi-p2p.md](./deploy-pi-p2p.md)**.
 
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location /api/ {
-        proxy_pass http://backend:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-
-    location /socket.io/ {
-        proxy_pass http://backend:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
-        proxy_read_timeout 86400;
-    }
-}
-```
-
-**Forwarded HTTPS:** If `$http_x_forwarded_proto` is empty, use `proxy_set_header X-Forwarded-Proto https;` in this block.
+**Forwarded HTTPS:** Behind Cloudflare Tunnel, the generated config sets **`X-Forwarded-Proto: https`** to the backend.
 
 ---
 
@@ -265,6 +238,6 @@ server {
 | Pi 5 + Docker + auto-restart? | Yes — `restart: unless-stopped` on each service. |
 | Caveats? | Tunnel carries **HTTPS/WSS**; **UDP RTC** for self-hosted LiveKit still needs correct **ports/NAT/TURN**. |
 
-**P2P Docker deployment** (this repo): **`infra/pi/docker-compose.p2p.yml`**, **`infra/pi/nginx-call.conf`**, and **[deploy-pi-p2p.md](./deploy-pi-p2p.md)**.
+**P2P Docker deployment** (this repo): **`infra/pi/docker-compose.p2p.yml`**, **`infra/pi/nginx/`** (templated config from **`APP_BASE_URL`**), and **[deploy-pi-p2p.md](./deploy-pi-p2p.md)**.
 
 **Conferences (LiveKit)** on **`conf.example.com`**: add a LiveKit service and tunnel route; align **`livekit.yaml`** keys with backend **`LIVEKIT_*`** (see sections above).

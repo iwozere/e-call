@@ -1,0 +1,2 @@
+# Shell hooks for Pi / nginx must use LF and stay executable-friendly on Linux
+infra/pi/**/*.sh text eol=lf
