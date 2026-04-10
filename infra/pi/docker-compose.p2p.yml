@@ -18,17 +18,19 @@ services:
     networks: [ecall]
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: ecall-nginx:local
     restart: unless-stopped
     depends_on:
       - backend
     env_file: .env
-    # server_name comes from APP_BASE_URL (or optional CALL_HOST); see nginx/README.md
+    container_name: ecall-nginx
     ports:
       - "127.0.0.1:8080:80"
     volumes:
       - ./nginx/templates/default.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ./nginx/docker-entrypoint.d/05-compute-call-host.sh:/docker-entrypoint.d/05-compute-call-host.sh:ro
       - ./html:/usr/share/nginx/html:ro
     networks: [ecall]
 
