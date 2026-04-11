@@ -1,5 +1,4 @@
-# server_name: ${CALL_HOST} from APP_BASE_URL (see docker-entrypoint.d/05-compute-call-host.sh).
-# Other $ signs doubled so envsubst leaves nginx variables intact.
+# Only ${CALL_HOST} is substituted by nginx docker envsubst; nginx vars use a single $ (see 20-envsubst-on-templates.sh).
 
 server {
     listen 80;
@@ -12,24 +11,24 @@ server {
     gzip_types text/css application/javascript application/json;
 
     location / {
-        try_files $$uri $$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
     }
 
     location /api/ {
         proxy_pass http://backend:3001;
         proxy_http_version 1.1;
-        proxy_set_header Host $$host;
-        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
     }
 
     location /socket.io/ {
         proxy_pass http://backend:3001;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $$host;
-        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
         proxy_read_timeout 86400;
         proxy_send_timeout 86400;
@@ -38,6 +37,6 @@ server {
     location /healthz {
         proxy_pass http://backend:3001/healthz;
         proxy_http_version 1.1;
-        proxy_set_header Host $$host;
+        proxy_set_header Host $host;
     }
 }
