@@ -6,5 +6,5 @@ export interface RoomRepository {
   addParticipant(roomId: string, participant: ParticipantMeta): Promise<void>;
   removeParticipant(roomId: string, participantId: string): Promise<void>;
   listParticipants(roomId: string): Promise<ParticipantMeta[]>;
-  cleanupExpiredRooms(): Promise<number>;
+  cleanupExpiredRooms(): Promise<{ removed: number; expiredRoomIds: string[] }>;
 }

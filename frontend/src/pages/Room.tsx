@@ -9,6 +9,8 @@ import { useLiveKitRoom } from '../hooks/useLiveKitRoom';
 import { VideoGrid, type GridParticipant } from '../components/VideoGrid';
 import { CallControls } from '../components/CallControls';
 import { InvitePanel } from '../components/InvitePanel';
+import { buildInviteUrl } from '../lib/invite/buildInviteUrl';
+import { formatRoomCode } from '../lib/invite/formatRoomCode';
 import { DisplayNameModal } from '../components/DisplayNameModal';
 import { PermissionError } from '../components/PermissionError';
 
@@ -108,10 +110,24 @@ export function Room() {
   const connected = mode === 'p2p' ? p2p.connected : sfu.connected;
   const showConnecting = !!joinPayload && !signalingError && !connected;
 
-  const inviteUrl = useMemo(
-    () => `${window.location.origin}/room/${encodeURIComponent(roomId)}`,
-    [roomId]
+  const inviteData = useMemo(
+    () => ({
+      roomId,
+      roomCode: formatRoomCode(roomId),
+      inviteUrl: buildInviteUrl(roomId),
+      roomMode: mode,
+    }),
+    [roomId, mode]
   );
+
+  const otherParticipantPresent = useMemo(() => {
+    if (mode === 'p2p') {
+      return p2p.remoteStreams.size > 0;
+    }
+    return sfu.tiles.some((t) => !t.isLocal);
+  }, [mode, p2p.remoteStreams, sfu.tiles]);
+
+  const showInvitePanel = !joinError && !otherParticipantPresent;
 
   const gridParticipants: GridParticipant[] = useMemo(() => {
     if (mode === 'p2p' && joinPayload) {
@@ -208,7 +224,7 @@ export function Room() {
 
       {signalingError && <p className="form-error">{signalingError}</p>}
 
-      <InvitePanel inviteUrl={inviteUrl} />
+      <InvitePanel data={inviteData} visible={showInvitePanel} />
 
       {media.stream && (
         <>

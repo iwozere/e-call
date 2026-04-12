@@ -12,10 +12,13 @@ export class InMemoryRoomRepository implements RoomRepository {
 
   async createRoom(mode: RoomMode): Promise<RoomMeta> {
     const roomId = nanoid(10);
+    const createdAt = Date.now();
     const room: RoomMeta = {
       roomId,
-      createdAt: Date.now(),
+      createdAt,
       mode,
+      roomType: 'ephemeral',
+      expiresAt: createdAt + this.ttlMs,
       participants: new Map(),
     };
     this.rooms.set(roomId, room);
@@ -53,18 +56,18 @@ export class InMemoryRoomRepository implements RoomRepository {
     return [...room.participants.values()];
   }
 
-  async cleanupExpiredRooms(): Promise<number> {
-    let removed = 0;
+  async cleanupExpiredRooms(): Promise<{ removed: number; expiredRoomIds: string[] }> {
+    const expiredRoomIds: string[] = [];
     const now = Date.now();
     for (const [id, room] of this.rooms) {
       const empty = room.participants.size === 0;
       const expired = now - room.createdAt > this.ttlMs;
       if (empty && expired) {
         this.rooms.delete(id);
-        removed++;
+        expiredRoomIds.push(id);
       }
     }
-    return removed;
+    return { removed: expiredRoomIds.length, expiredRoomIds };
   }
 
   private isExpired(room: RoomMeta): boolean {
