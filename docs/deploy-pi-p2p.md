@@ -4,14 +4,15 @@
 
 This guide deploys **only the 1:1 P2P stack**: React SPA, Express API, and Socket.io on **`https://call.<your-domain>`** (example: `call.example.com`). It uses **`infra/pi/docker-compose.p2p.yml`**.
 
-**Not included:** LiveKit / `conf.*` — add that later using `docs/pi-setup.md`.
+**Not included:** LiveKit / **`conf.*`** (e.g. `conf.e-music.win`) — add that later when you wire SFU; **`call.*`** stays the P2P app origin in `.env` / `VITE_*`.
 
 ---
 
 ## What you get
 
-- **Docker Compose** with `restart: unless-stopped` on **backend**, **nginx**, and **cloudflared**
-- **TLS** at Cloudflare (tunnel); nginx listens on **HTTP port 80** inside the stack
+- **Docker Compose** with `restart: unless-stopped` on **backend** and **nginx**
+- **Optional** **`cloudflared`** in the same file (Compose **`tunnel`** profile) if you do **not** run the tunnel elsewhere
+- **TLS** at Cloudflare (or another edge) via your tunnel; nginx listens on **HTTP port 80** inside the stack
 - **ARM64**-compatible images (`node:20-bookworm-slim`, `nginx:alpine`, `cloudflared`)
 
 ---
@@ -19,8 +20,8 @@ This guide deploys **only the 1:1 P2P stack**: React SPA, Express API, and Socke
 ## Prerequisites
 
 - Raspberry Pi 5 with **Ubuntu 24.04** (or similar) and **Docker Engine** + **Docker Compose v2**
-- A **Cloudflare**-managed DNS zone (e.g. `example.com`)
-- A **Cloudflare Tunnel** with a **Public hostname** for your call app
+- A **Cloudflare**-managed DNS zone (or another way to get HTTPS to the Pi)
+- A **tunnel or reverse proxy** that forwards public **`https://call.<your-domain>`** to this stack’s nginx (see [§3](#3-cloudflare-tunnel))
 - On a dev PC (or the Pi): **Node.js 20** + **npm** to build the frontend once (or build on the Pi)
 
 ---
@@ -61,15 +62,24 @@ npm install
 
 ## 3. Cloudflare Tunnel
 
+Pick **one** approach.
+
+### A) Tunnel runs in **another** infra project (common)
+
+You do **not** need **`TUNNEL_TOKEN`** in **`infra/pi/.env`**. Do **not** start the **`tunnel`** profile here. Point your external tunnel (or Caddy, etc.) at this stack’s nginx — e.g. HTTP to **`ecall-nginx:80`** on a shared Docker network, or to **`127.0.0.1:8080`** on the Pi if the tunnel client runs on the host (see [§ Caddy in front](#caddy-in-front-of-ecall)).
+
+### B) Tunnel runs **inside** this Compose file
+
 1. Cloudflare **Zero Trust** → **Networks** → **Tunnels** → create or select a tunnel.
-2. Install via **Docker** and copy the **`TUNNEL_TOKEN`** (or use the guided install).
+2. Copy the **`TUNNEL_TOKEN`** into **`infra/pi/.env`**.
 3. Under **Public hostnames**, add:
    - **Subdomain:** `call` (or your choice)
    - **Domain:** `example.com`
    - **Service type:** HTTP
-   - **URL:** depends on layout:
-     - **All-in-one Compose** (this repo only): `http://nginx:80` (same Docker network as `cloudflared`).
-     - **Caddy in front** (common): `http://caddy:80` — then Caddy must proxy `call.*` to **`ecall-nginx:80`** (see [§ Caddy in front](#caddy-in-front-of-ecall)).
+   - **URL:** `http://nginx:80` (same Docker network as `cloudflared`).
+
+4. Start with the profile:  
+   `docker compose -f docker-compose.p2p.yml --profile tunnel up -d`
 
 Save. DNS for `call` is usually created automatically.
 
@@ -87,7 +97,7 @@ Set at least:
 
 | Variable | Example | Notes |
 |----------|---------|--------|
-| `TUNNEL_TOKEN` | `(from Cloudflare)` | Required for `cloudflared` |
+| `TUNNEL_TOKEN` | `(from Cloudflare)` | Only if you use **`--profile tunnel`** with this repo’s `cloudflared` |
 | `APP_BASE_URL` | `https://call.example.com` | Invite links; **no** trailing slash |
 | `CORS_ORIGIN` | `https://call.example.com` | Must match the browser origin |
 | `VITE_API_BASE_URL` | `https://call.example.com` | Same as `APP_BASE_URL` for same-origin API |
@@ -127,6 +137,8 @@ Still in **`infra/pi`**:
 ```bash
 docker compose -f docker-compose.p2p.yml build
 docker compose -f docker-compose.p2p.yml up -d
+# Optional: also start bundled cloudflared (set TUNNEL_TOKEN in .env):
+# docker compose -f docker-compose.p2p.yml --profile tunnel up -d
 docker compose -f docker-compose.p2p.yml ps
 docker compose -f docker-compose.p2p.yml logs -f
 ```
@@ -208,13 +220,7 @@ curl -sS -H "Host: call.e-music.win" http://127.0.0.1:8080/ | head -5
 
 You should see HTML (e.g. `<!doctype html>`). If **8080** still refuses, check logs: `docker compose -f docker-compose.p2p.yml logs nginx`.
 
-You can **stop** the **`cloudflared`** service in this Compose file if the tunnel is handled by another stack (to avoid two tunnel clients). Example:
-
-```bash
-docker compose -f docker-compose.p2p.yml stop cloudflared
-```
-
-(or remove the `cloudflared` service from a local override file).
+By default, **`cloudflared` is not started** (it is behind the **`tunnel`** profile). If you ever started it and want it off, use `docker compose ... stop cloudflared` or `up` without the **`tunnel`** profile.
 
 ### 2) Put Caddy and **`ecall-nginx`** on the same Docker network
 

@@ -1,5 +1,9 @@
-# P2P-only stack for Raspberry Pi (Ubuntu) + Cloudflare Tunnel.
+# P2P-only stack for Raspberry Pi (Ubuntu) + nginx + backend.
 # Run from this directory: docker compose -f docker-compose.p2p.yml up -d
+#
+# Optional: run the bundled cloudflared sidecar only if you are NOT using a tunnel elsewhere:
+#   docker compose -f docker-compose.p2p.yml --profile tunnel up -d
+# (requires TUNNEL_TOKEN in .env)
 #
 # Prerequisites: ./html populated (see docs/deploy-pi-p2p.md), .env from .env.example
 
@@ -35,6 +39,8 @@ services:
     networks: [ecall]
 
   cloudflared:
+    profiles:
+      - tunnel
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     depends_on:
