@@ -83,3 +83,9 @@ With double NAT, CGNAT is common and inbound port forwarding is often impossible
 ## Why the Pi already uses Cloudflare Tunnel but still needs TURN
 
 Cloudflare Tunnel carries **HTTPS and WebSocket** traffic — it is how signaling (Socket.io) and the API reach the Pi without opening ports. It does **not** carry UDP or the WebRTC media stream. Media is peer-to-peer between browsers and bypasses the tunnel entirely. TURN is a separate relay path for media only.
+
+
+To activate TURN: edit infra/pi/.env, uncomment the three VITE_TURN_* lines with your Metered.ca credentials, then 
+cd infra/pi
+./prepare-frontend.sh
+docker compose -f docker-compose.p2p.yml up -d --build

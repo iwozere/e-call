@@ -5,11 +5,13 @@ import type { Socket } from 'socket.io-client';
 
 function buildIceServers(): RTCIceServer[] {
   const servers: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
-  const url = import.meta.env.VITE_TURN_URL;
   const username = import.meta.env.VITE_TURN_USERNAME;
   const credential = import.meta.env.VITE_TURN_PASSWORD;
-  if (url?.trim() && username && credential) {
-    servers.push({ urls: url.trim(), username, credential });
+  // VITE_TURN_URLS accepts comma-separated URLs (same credential); falls back to VITE_TURN_URL
+  const raw = import.meta.env.VITE_TURN_URLS ?? import.meta.env.VITE_TURN_URL;
+  if (raw?.trim() && username && credential) {
+    const urls = raw.split(',').map((u: string) => u.trim()).filter(Boolean);
+    if (urls.length) servers.push({ urls, username, credential });
   }
   return servers;
 }
